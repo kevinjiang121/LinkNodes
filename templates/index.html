@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Graph Creator</title>
+</head>
+<body>
+    <h1>Graph Creator</h1>
+
+    <h2>Add Node</h2>
+    <form action="/add_node" method="post">
+        <label for="node">Node:</label>
+        <input type="text" id="node" name="node" required>
+        <button type="submit">Add Node</button>
+    </form>
+
+    <h2>Add Edge</h2>
+    <form action="/add_edge" method="post">
+        <label for="node1">Node 1:</label>
+        <input type="text" id="node1" name="node1" required>
+        <label for="node2">Node 2:</label>
+        <input type="text" id="node2" name="node2" required>
+        <button type="submit">Add Edge</button>
+    </form>
+
+    <h2>Graph Nodes</h2>
+    <ul>
+        {% for node in nodes %}
+            <li>{{ node }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Graph Edges</h2>
+    <ul>
+        {% for node, edges in edges.items() %}
+            <li>{{ node }}: {{ edges }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
