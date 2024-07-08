@@ -22,6 +22,23 @@
         <button type="submit">Add Edge</button>
     </form>
 
+    <h2>Export Graph</h2>
+    <form action="/export" method="get">
+        <button type="submit">Export Graph</button>
+    </form>
+
+    <h2>Import Graph</h2>
+    <form action="/import" method="post" enctype="multipart/form-data">
+        <label for="file">Choose JSON File:</label>
+        <input type="file" id="file" name="file" accept=".json" required>
+        <button type="submit">Import Graph</button>
+    </form>
+
+    <h2>Clear Graph</h2>
+    <form action="/clear" method="post">
+        <button type="submit">Clear Graph</button>
+    </form>
+
     <h2>Graph Nodes</h2>
     <ul>
         {% for node in nodes %}
