@@ -32,29 +32,29 @@ LinkNodes is a web application that allows users to create and manage graphs (no
 
 1. Clone the repository:
 
-   \`\`\`bash
+   ```bash
    git clone https://github.com/your-username/linknodes.git
    cd linknodes
-   \`\`\`
+   ```
 
 2. Create and activate a virtual environment:
 
-   \`\`\`bash
+   ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows use \`venv\\Scripts\\activate\`
-   \`\`\`
+   ```
 
 3. Install the required packages:
 
-   \`\`\`bash
+   ```bash
    pip install Flask
-   \`\`\`
+   ```
 
 4. Run the Flask application:
 
-   \`\`\`bash
+   ```bash
    python app.py
-   \`\`\`
+   ```
 
 5. Open your web browser and go to \`http://127.0.0.1:5000/\`.
 
@@ -78,7 +78,7 @@ LinkNodes is a web application that allows users to create and manage graphs (no
 
 ## Directory Structure
 
-\`\`\`
+```bash
 linknodes/
 ├── app.py
 ├── templates/
@@ -87,7 +87,7 @@ linknodes/
     ├── styles.css
     ├── node.js
     └── main.js
-\`\`\`
+```
 
 ## Contributing
 
