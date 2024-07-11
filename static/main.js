@@ -1,5 +1,3 @@
-// main.js
-
 let canvas = document.getElementById('graphCanvas');
 let ctx = canvas.getContext('2d');
 let contextMenu = document.getElementById('contextMenu');
@@ -11,24 +9,76 @@ let startNode = null;
 let selectedNode = null;
 let mouseX = 0;
 let mouseY = 0;
+let contextMenuX = 0;
+let contextMenuY = 0;
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight * 0.8; 
+
+window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight * 0.8;
+    draw();
+});
 
 canvas.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     let x = e.offsetX;
     let y = e.offsetY;
     selectedNode = getNodeAt(x, y);
+    contextMenuX = x;
+    contextMenuY = y;
     if (selectedNode) {
         showContextMenu(e.clientX, e.clientY);
     } else {
-        let nodeName = prompt("Enter node name:");
-        if (nodeName) {
-            let nodeDescription = prompt("Enter node description:");
-            nodes.push(new Node(nodeName, nodeDescription, x, y));
-            draw();
-            updateNodeList();
-        }
+        showAddNodeMenu(e.clientX, e.clientY);
     }
 });
+
+function showAddNodeMenu(x, y) {
+    let addNodeMenu = document.createElement('div');
+    addNodeMenu.classList.add('add-node-menu');
+    addNodeMenu.style.left = `${x}px`;
+    addNodeMenu.style.top = `${y}px`;
+
+    let nodeNameInput = document.createElement('input');
+    nodeNameInput.type = 'text';
+    nodeNameInput.placeholder = 'Node Name';
+    nodeNameInput.classList.add('input-field');
+    addNodeMenu.appendChild(nodeNameInput);
+
+    let nodeDescriptionInput = document.createElement('input');
+    nodeDescriptionInput.type = 'text';
+    nodeDescriptionInput.placeholder = 'Node Description';
+    nodeDescriptionInput.classList.add('input-field');
+    addNodeMenu.appendChild(nodeDescriptionInput);
+
+    let addButton = document.createElement('button');
+    addButton.textContent = 'Add Node';
+    addButton.classList.add('add-button');
+    addButton.onclick = function () {
+        let nodeName = nodeNameInput.value;
+        let nodeDescription = nodeDescriptionInput.value;
+        if (nodeName && nodeDescription) {
+            nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
+            draw();
+            updateNodeList();
+            document.body.removeChild(addNodeMenu);
+        } else {
+            alert('Please enter both name and description.');
+        }
+    };
+    addNodeMenu.appendChild(addButton);
+
+    document.body.appendChild(addNodeMenu);
+
+    document.addEventListener('click', function removeMenu(event) {
+        if (!addNodeMenu.contains(event.target)) {
+            document.body.removeChild(addNodeMenu);
+            document.removeEventListener('click', removeMenu);
+        }
+    });
+}
 
 canvas.addEventListener('mousedown', function (e) {
     if (contextMenu.style.display === 'block') {
@@ -170,6 +220,17 @@ function showContextMenu(x, y) {
     contextMenu.style.left = x + 'px';
     contextMenu.style.top = y + 'px';
     contextMenu.style.display = 'block';
+}
+
+function showAddNodeForm() {
+    contextMenu.style.display = 'none';
+    let nodeName = prompt("Enter node name:");
+    if (nodeName) {
+        let nodeDescription = prompt("Enter node description:");
+        nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
+        draw();
+        updateNodeList();
+    }
 }
 
 function removeNode() {
