@@ -12,8 +12,14 @@ let mouseY = 0;
 let contextMenuX = 0;
 let contextMenuY = 0;
 
+let isPanning = false;
+let startPanX = 0;
+let startPanY = 0;
+let offsetX = 0;
+let offsetY = 0;
+
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight * 0.8; 
+canvas.height = window.innerHeight * 0.8;
 
 window.addEventListener('resize', function() {
     canvas.width = window.innerWidth;
@@ -23,8 +29,8 @@ window.addEventListener('resize', function() {
 
 canvas.addEventListener('contextmenu', function (e) {
     e.preventDefault();
-    let x = e.offsetX;
-    let y = e.offsetY;
+    let x = e.offsetX - offsetX;
+    let y = e.offsetY - offsetY;
     selectedNode = getNodeAt(x, y);
     contextMenuX = x;
     contextMenuY = y;
@@ -35,78 +41,47 @@ canvas.addEventListener('contextmenu', function (e) {
     }
 });
 
-function showAddNodeMenu(x, y) {
-    let addNodeMenu = document.createElement('div');
-    addNodeMenu.classList.add('add-node-menu');
-    addNodeMenu.style.left = `${x}px`;
-    addNodeMenu.style.top = `${y}px`;
-
-    let nodeNameInput = document.createElement('input');
-    nodeNameInput.type = 'text';
-    nodeNameInput.placeholder = 'Node Name';
-    nodeNameInput.classList.add('input-field');
-    addNodeMenu.appendChild(nodeNameInput);
-
-    let nodeDescriptionInput = document.createElement('input');
-    nodeDescriptionInput.type = 'text';
-    nodeDescriptionInput.placeholder = 'Node Description';
-    nodeDescriptionInput.classList.add('input-field');
-    addNodeMenu.appendChild(nodeDescriptionInput);
-
-    let addButton = document.createElement('button');
-    addButton.textContent = 'Add Node';
-    addButton.classList.add('add-button');
-    addButton.onclick = function () {
-        let nodeName = nodeNameInput.value;
-        let nodeDescription = nodeDescriptionInput.value;
-        if (nodeName && nodeDescription) {
-            nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
-            draw();
-            updateNodeList();
-            document.body.removeChild(addNodeMenu);
-        } else {
-            alert('Please enter both name and description.');
-        }
-    };
-    addNodeMenu.appendChild(addButton);
-
-    document.body.appendChild(addNodeMenu);
-
-    document.addEventListener('click', function removeMenu(event) {
-        if (!addNodeMenu.contains(event.target)) {
-            document.body.removeChild(addNodeMenu);
-            document.removeEventListener('click', removeMenu);
-        }
-    });
-}
-
 canvas.addEventListener('mousedown', function (e) {
     if (contextMenu.style.display === 'block') {
         contextMenu.style.display = 'none';
     }
-    let x = e.offsetX;
-    let y = e.offsetY;
+
+    let x = e.offsetX - offsetX;
+    let y = e.offsetY - offsetY;
     startNode = getNodeAt(x, y);
-    isDragging = !!startNode;
-    if (isDragging) {
+
+    if (startNode) {
+        isDragging = true;
         mouseX = x;
         mouseY = y;
+    } else {
+        isPanning = true;
+        startPanX = e.clientX;
+        startPanY = e.clientY;
     }
 });
 
 canvas.addEventListener('mousemove', function (e) {
+    let x = e.offsetX - offsetX;
+    let y = e.offsetY - offsetY;
+    displayCoordinates(e.offsetX, e.offsetY);
+
     if (isDragging) {
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
         draw();
-        drawLine(startNode.x, startNode.y, mouseX, mouseY);
+        drawLine(startNode.x, startNode.y, x, y);
+    } else if (isPanning) {
+        offsetX += e.clientX - startPanX;
+        offsetY += e.clientY - startPanY;
+        startPanX = e.clientX;
+        startPanY = e.clientY;
+        draw();
     }
 });
 
 canvas.addEventListener('mouseup', function (e) {
     if (isDragging) {
-        let x = e.offsetX;
-        let y = e.offsetY;
+        let x = e.offsetX - offsetX;
+        let y = e.offsetY - offsetY;
         let endNode = getNodeAt(x, y);
         if (endNode && startNode && endNode !== startNode) {
             edges.push({ from: startNode.name, to: endNode.name });
@@ -115,24 +90,29 @@ canvas.addEventListener('mouseup', function (e) {
         isDragging = false;
         startNode = null;
         draw();
+    } else if (isPanning) {
+        isPanning = false;
     }
 });
 
 canvas.addEventListener('click', function (e) {
-    let x = e.offsetX;
-    let y = e.offsetY;
+    let x = e.offsetX - offsetX;
+    let y = e.offsetY - offsetY;
     let node = getNodeAt(x, y);
     if (node) {
-        showNodeDetails(e.clientX, e.clientY, node);
+        toggleNodeExpansion(node);
     }
 });
 
 function getNodeAt(x, y) {
-    return nodes.find(node => Math.hypot(node.x - x, node.y - y) < 10);
+    return nodes.find(node => Math.hypot(node.x - x, node.y - y) < node.radius);
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+
     edges.forEach(edge => {
         let fromNode = nodes.find(node => node.name === edge.from);
         let toNode = nodes.find(node => node.name === edge.to);
@@ -143,19 +123,36 @@ function draw() {
             ctx.stroke();
         }
     });
+
     nodes.forEach(node => {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.strokeText(node.name, node.x - 10, node.y - 15);
+        if (node.isExpanded) {
+            ctx.beginPath();
+            ctx.rect(node.x - node.width / 2, node.y - node.height / 2, node.width, node.height);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(node.description, node.x - node.width / 2 + 10, node.y);
+        } else {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.strokeText(node.name, node.x - 10, node.y - 15);
+        }
+        ctx.stroke();
     });
+
+    ctx.restore();
 }
 
 function drawLine(x1, y1, x2, y2) {
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
+    ctx.restore();
 }
 
 function updateNodeList() {
@@ -222,15 +219,55 @@ function showContextMenu(x, y) {
     contextMenu.style.display = 'block';
 }
 
-function showAddNodeForm() {
-    contextMenu.style.display = 'none';
-    let nodeName = prompt("Enter node name:");
-    if (nodeName) {
-        let nodeDescription = prompt("Enter node description:");
-        nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
-        draw();
-        updateNodeList();
+function showAddNodeMenu(x, y) {
+    // Remove any existing add node menu
+    let existingMenu = document.querySelector('.add-node-menu');
+    if (existingMenu) {
+        document.body.removeChild(existingMenu);
     }
+
+    let addNodeMenu = document.createElement('div');
+    addNodeMenu.classList.add('add-node-menu');
+    addNodeMenu.style.left = `${x}px`;
+    addNodeMenu.style.top = `${y}px`;
+
+    let nodeNameInput = document.createElement('input');
+    nodeNameInput.type = 'text';
+    nodeNameInput.placeholder = 'Node Name';
+    nodeNameInput.classList.add('input-field');
+    addNodeMenu.appendChild(nodeNameInput);
+
+    let nodeDescriptionInput = document.createElement('input');
+    nodeDescriptionInput.type = 'text';
+    nodeDescriptionInput.placeholder = 'Node Description';
+    nodeDescriptionInput.classList.add('input-field');
+    addNodeMenu.appendChild(nodeDescriptionInput);
+
+    let addButton = document.createElement('button');
+    addButton.textContent = 'Add Node';
+    addButton.classList.add('add-button');
+    addButton.onclick = function () {
+        let nodeName = nodeNameInput.value;
+        let nodeDescription = nodeDescriptionInput.value;
+        if (nodeName && nodeDescription) {
+            nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
+            draw();
+            updateNodeList();
+            document.body.removeChild(addNodeMenu);
+        } else {
+            alert('Please enter both name and description.');
+        }
+    };
+    addNodeMenu.appendChild(addButton);
+
+    document.body.appendChild(addNodeMenu);
+
+    document.addEventListener('click', function removeMenu(event) {
+        if (!addNodeMenu.contains(event.target)) {
+            document.body.removeChild(addNodeMenu);
+            document.removeEventListener('click', removeMenu);
+        }
+    });
 }
 
 function removeNode() {
@@ -245,18 +282,41 @@ function removeNode() {
     }
 }
 
-function showNodeDetails(x, y, node) {
-    nodeDetails.innerHTML = `<strong>${node.name}</strong><br>${node.description}`;
-    nodeDetails.style.left = x + 'px';
-    nodeDetails.style.top = y + 'px';
-    nodeDetails.style.display = 'block';
+function toggleNodeExpansion(node) {
+    node.isExpanded = !node.isExpanded;
+    animateNodeExpansion(node);
 }
 
-document.addEventListener('click', function (e) {
-    if (contextMenu.style.display === 'block') {
-        contextMenu.style.display = 'none';
+function animateNodeExpansion(node) {
+    let startTime = null;
+    const duration = 300; // Animation duration in milliseconds
+    const initialRadius = node.radius;
+    const targetRadius = node.isExpanded ? 0 : node.originalRadius;
+    const initialWidth = node.isExpanded ? node.originalRadius * 2 : 0;
+    const targetWidth = node.isExpanded ? node.expandedWidth : node.originalRadius * 2;
+    const initialHeight = node.isExpanded ? node.originalRadius * 2 : 0;
+    const targetHeight = node.isExpanded ? node.expandedHeight : node.originalRadius * 2;
+
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        node.radius = initialRadius + progress * (targetRadius - initialRadius);
+        node.width = initialWidth + progress * (targetWidth - initialWidth);
+        node.height = initialHeight + progress * (targetHeight - initialHeight);
+
+        draw();
+
+        if (elapsed < duration) {
+            requestAnimationFrame(animate);
+        }
     }
-    if (!e.target.closest('#nodeDetails') && !e.target.closest('#graphCanvas')) {
-        nodeDetails.style.display = 'none';
-    }
-});
+
+    requestAnimationFrame(animate);
+}
+
+function displayCoordinates(x, y) {
+    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); // Clear the previous coordinates
+    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); // Display the coordinates at the bottom left
+}

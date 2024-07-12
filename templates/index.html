@@ -6,7 +6,7 @@
 </head>
 <body>
     <h1>Graph Creator</h1>
-    <canvas id="graphCanvas" width="800" height="600"></canvas>
+    <canvas id="graphCanvas"></canvas>
     <br>
     <button onclick="exportGraph()">Export Graph</button>
     <input type="file" id="importFile" onchange="importGraph()">
@@ -18,8 +18,10 @@
     <h2>Graph Edges</h2>
     <ul id="edgeList"></ul>
 
-    <div id="contextMenu">
+    <div id="contextMenu" style="display: none; position: absolute; background-color: white; border: 1px solid black; z-index: 1000;">
         <ul>
+            <li onclick="showAddNodeMenu(contextMenuX, contextMenuY)">Add Node</li>
+            <li onclick="editNodeDescription()">Edit Description</li>
             <li onclick="removeNode()">Remove Node</li>
         </ul>
     </div>
