@@ -105,7 +105,14 @@ canvas.addEventListener('click', function (e) {
 });
 
 function getNodeAt(x, y) {
-    return nodes.find(node => Math.hypot(node.x - x, node.y - y) < node.radius);
+    return nodes.find(node => {
+        if (node.isExpanded) {
+            return x > node.x - node.width / 2 && x < node.x + node.width / 2 &&
+                   y > node.y - node.height / 2 && y < node.y + node.height / 2;
+        } else {
+            return Math.hypot(node.x - x, node.y - y) < node.radius;
+        }
+    });
 }
 
 function draw() {
@@ -292,10 +299,10 @@ function animateNodeExpansion(node) {
     const duration = 300; // Animation duration in milliseconds
     const initialRadius = node.radius;
     const targetRadius = node.isExpanded ? 0 : node.originalRadius;
-    const initialWidth = node.isExpanded ? node.originalRadius * 2 : 0;
-    const targetWidth = node.isExpanded ? node.expandedWidth : node.originalRadius * 2;
-    const initialHeight = node.isExpanded ? node.originalRadius * 2 : 0;
-    const targetHeight = node.isExpanded ? node.expandedHeight : node.originalRadius * 2;
+    const initialWidth = node.isExpanded ? 0 : node.expandedWidth;
+    const targetWidth = node.isExpanded ? node.expandedWidth : 0;
+    const initialHeight = node.isExpanded ? 0 : node.expandedHeight;
+    const targetHeight = node.isExpanded ? node.expandedHeight : 0;
 
     function animate(timestamp) {
         if (!startTime) startTime = timestamp;
@@ -317,6 +324,6 @@ function animateNodeExpansion(node) {
 }
 
 function displayCoordinates(x, y) {
-    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); // Clear the previous coordinates
-    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); // Display the coordinates at the bottom left
+    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); 
+    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); 
 }
