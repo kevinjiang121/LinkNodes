@@ -1,7 +1,6 @@
 let canvas = document.getElementById('graphCanvas');
 let ctx = canvas.getContext('2d');
 let contextMenu = document.getElementById('contextMenu');
-let nodeDetails = document.getElementById('nodeDetails');
 let nodes = [];
 let edges = [];
 let isDragging = false;
@@ -139,7 +138,28 @@ function draw() {
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = '#000';
-            ctx.fillText(node.description, node.x - node.width / 2 + 10, node.y);
+            
+            if (!node.textarea) {
+                node.textarea = document.createElement('textarea');
+                node.textarea.value = node.description;
+                node.textarea.style.position = 'absolute';
+                node.textarea.style.left = `${node.x - node.width / 2 + offsetX + canvas.offsetLeft}px`;
+                node.textarea.style.top = `${node.y - node.height / 2 + offsetY + canvas.offsetTop}px`;
+                node.textarea.style.width = `${node.width - 20}px`;
+                node.textarea.style.height = `${node.height - 20}px`;
+                node.textarea.style.resize = 'none';
+                document.body.appendChild(node.textarea);
+
+                node.textarea.addEventListener('blur', function () {
+                    node.description = node.textarea.value;
+                    document.body.removeChild(node.textarea);
+                    node.textarea = null;
+                    node.isExpanded = false;
+                    resetNodeDimensions(node);
+                    draw();
+                });
+            }
+
         } else {
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
@@ -150,6 +170,12 @@ function draw() {
     });
 
     ctx.restore();
+}
+
+function resetNodeDimensions(node) {
+    node.radius = node.originalRadius;
+    node.width = 0;
+    node.height = 0;
 }
 
 function drawLine(x1, y1, x2, y2) {
@@ -227,7 +253,6 @@ function showContextMenu(x, y) {
 }
 
 function showAddNodeMenu(x, y) {
-    // Remove any existing add node menu
     let existingMenu = document.querySelector('.add-node-menu');
     if (existingMenu) {
         document.body.removeChild(existingMenu);
@@ -291,13 +316,18 @@ function removeNode() {
 
 function toggleNodeExpansion(node) {
     node.isExpanded = !node.isExpanded;
+    if (!node.isExpanded && node.textarea) {
+        node.description = node.textarea.value;
+        document.body.removeChild(node.textarea);
+        node.textarea = null;
+    }
     animateNodeExpansion(node);
 }
 
 function animateNodeExpansion(node) {
     let startTime = null;
-    const duration = 300; // Animation duration in milliseconds
-    const initialRadius = node.radius;
+    const duration = 300; 
+    const initialRadius = node.isExpanded ? node.radius : 0;
     const targetRadius = node.isExpanded ? 0 : node.originalRadius;
     const initialWidth = node.isExpanded ? 0 : node.expandedWidth;
     const targetWidth = node.isExpanded ? node.expandedWidth : 0;
@@ -313,10 +343,22 @@ function animateNodeExpansion(node) {
         node.width = initialWidth + progress * (targetWidth - initialWidth);
         node.height = initialHeight + progress * (targetHeight - initialHeight);
 
+        if (node.textarea) {
+            node.textarea.style.left = `${node.x - node.width / 2 + offsetX + canvas.offsetLeft}px`;
+            node.textarea.style.top = `${node.y - node.height / 2 + offsetY + canvas.offsetTop}px`;
+            node.textarea.style.width = `${node.width - 20}px`;
+            node.textarea.style.height = `${node.height - 20}px`;
+        }
+
         draw();
 
         if (elapsed < duration) {
             requestAnimationFrame(animate);
+        } else {
+            if (!node.isExpanded) {
+                resetNodeDimensions(node);
+            }
+            draw();
         }
     }
 
@@ -324,6 +366,6 @@ function animateNodeExpansion(node) {
 }
 
 function displayCoordinates(x, y) {
-    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); 
-    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); 
+    ctx.clearRect(0, canvas.height - 20, canvas.width, 20);
+    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10);
 }
