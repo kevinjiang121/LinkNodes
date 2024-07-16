@@ -4,6 +4,7 @@ let contextMenu = document.getElementById('contextMenu');
 let nodes = [];
 let edges = [];
 let isDragging = false;
+let draggingNode = null;
 let startNode = null;
 let selectedNode = null;
 let mouseX = 0;
@@ -16,6 +17,10 @@ let startPanX = 0;
 let startPanY = 0;
 let offsetX = 0;
 let offsetY = 0;
+let clickThreshold = 5;
+let dragStartX = 0;
+let dragStartY = 0;
+let gridSpacing = 20;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.8;
@@ -51,8 +56,11 @@ canvas.addEventListener('mousedown', function (e) {
 
     if (startNode) {
         isDragging = true;
+        draggingNode = startNode;
         mouseX = x;
         mouseY = y;
+        dragStartX = x;
+        dragStartY = y;
     } else {
         isPanning = true;
         startPanX = e.clientX;
@@ -65,9 +73,10 @@ canvas.addEventListener('mousemove', function (e) {
     let y = e.offsetY - offsetY;
     displayCoordinates(e.offsetX, e.offsetY);
 
-    if (isDragging) {
+    if (isDragging && draggingNode) {
+        draggingNode.x = x;
+        draggingNode.y = y;
         draw();
-        drawLine(startNode.x, startNode.y, x, y);
     } else if (isPanning) {
         offsetX += e.clientX - startPanX;
         offsetY += e.clientY - startPanY;
@@ -81,13 +90,12 @@ canvas.addEventListener('mouseup', function (e) {
     if (isDragging) {
         let x = e.offsetX - offsetX;
         let y = e.offsetY - offsetY;
-        let endNode = getNodeAt(x, y);
-        if (endNode && startNode && endNode !== startNode) {
-            edges.push({ from: startNode.name, to: endNode.name });
-            updateEdgeList();
+        let movedDistance = Math.hypot(dragStartX - x, dragStartY - y);
+        if (movedDistance < clickThreshold) {
+            toggleNodeExpansion(draggingNode);
         }
         isDragging = false;
-        startNode = null;
+        draggingNode = null;
         draw();
     } else if (isPanning) {
         isPanning = false;
@@ -95,11 +103,13 @@ canvas.addEventListener('mouseup', function (e) {
 });
 
 canvas.addEventListener('click', function (e) {
-    let x = e.offsetX - offsetX;
-    let y = e.offsetY - offsetY;
-    let node = getNodeAt(x, y);
-    if (node) {
-        toggleNodeExpansion(node);
+    if (!isDragging) {
+        let x = e.offsetX - offsetX;
+        let y = e.offsetY - offsetY;
+        let node = getNodeAt(x, y);
+        if (node) {
+            toggleNodeExpansion(node);
+        }
     }
 });
 
@@ -119,6 +129,8 @@ function draw() {
     ctx.save();
     ctx.translate(offsetX, offsetY);
 
+    drawGrid();
+
     edges.forEach(edge => {
         let fromNode = nodes.find(node => node.name === edge.from);
         let toNode = nodes.find(node => node.name === edge.to);
@@ -126,6 +138,7 @@ function draw() {
             ctx.beginPath();
             ctx.moveTo(fromNode.x, fromNode.y);
             ctx.lineTo(toNode.x, toNode.y);
+            ctx.strokeStyle = '#000'; 
             ctx.stroke();
         }
     });
@@ -136,9 +149,10 @@ function draw() {
             ctx.rect(node.x - node.width / 2, node.y - node.height / 2, node.width, node.height);
             ctx.fillStyle = '#fff';
             ctx.fill();
+            ctx.strokeStyle = '#000'; 
             ctx.stroke();
             ctx.fillStyle = '#000';
-            
+
             if (!node.textarea) {
                 node.textarea = document.createElement('textarea');
                 node.textarea.value = node.description;
@@ -155,7 +169,7 @@ function draw() {
                     document.body.removeChild(node.textarea);
                     node.textarea = null;
                     node.isExpanded = false;
-                    resetNodeDimensions(node);
+                    resetNodeDimensions(node); 
                     draw();
                 });
             }
@@ -164,10 +178,34 @@ function draw() {
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
             ctx.fill();
-            ctx.strokeText(node.name, node.x - 10, node.y - 15);
+            ctx.strokeStyle = '#000'; 
+            ctx.stroke();
+            ctx.fillStyle = '#000';
+            ctx.fillText(node.name, node.x - 10, node.y - 15);
         }
-        ctx.stroke();
     });
+
+    ctx.restore();
+}
+
+function drawGrid() {
+    ctx.save();
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 0.5;
+
+    for (let x = -offsetX % gridSpacing; x < canvas.width; x += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+
+    for (let y = -offsetY % gridSpacing; y < canvas.height; y += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
 
     ctx.restore();
 }
@@ -326,7 +364,7 @@ function toggleNodeExpansion(node) {
 
 function animateNodeExpansion(node) {
     let startTime = null;
-    const duration = 300; 
+    const duration = 300;
     const initialRadius = node.isExpanded ? node.radius : 0;
     const targetRadius = node.isExpanded ? 0 : node.originalRadius;
     const initialWidth = node.isExpanded ? 0 : node.expandedWidth;
@@ -356,7 +394,7 @@ function animateNodeExpansion(node) {
             requestAnimationFrame(animate);
         } else {
             if (!node.isExpanded) {
-                resetNodeDimensions(node);
+                resetNodeDimensions(node); 
             }
             draw();
         }
@@ -366,6 +404,8 @@ function animateNodeExpansion(node) {
 }
 
 function displayCoordinates(x, y) {
-    ctx.clearRect(0, canvas.height - 20, canvas.width, 20);
-    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10);
+    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); 
+    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); 
 }
+
+draw();
