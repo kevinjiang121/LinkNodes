@@ -3,7 +3,8 @@ let ctx = canvas.getContext('2d');
 let contextMenu = document.getElementById('contextMenu');
 let nodes = [];
 let edges = [];
-let isDragging = false;
+let isDraggingNode = false;
+let isCreatingEdge = false;
 let draggingNode = null;
 let startNode = null;
 let selectedNode = null;
@@ -17,10 +18,16 @@ let startPanX = 0;
 let startPanY = 0;
 let offsetX = 0;
 let offsetY = 0;
-let clickThreshold = 5;
+let clickThreshold = 5; 
 let dragStartX = 0;
 let dragStartY = 0;
 let gridSpacing = 20;
+let zoom = 1;
+let minZoom = 0.5;
+let maxZoom = 2;
+
+let hoveredNode = null;
+let edgeHandleRadius = 5;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.8;
@@ -33,8 +40,8 @@ window.addEventListener('resize', function() {
 
 canvas.addEventListener('contextmenu', function (e) {
     e.preventDefault();
-    let x = e.offsetX - offsetX;
-    let y = e.offsetY - offsetY;
+    let x = (e.offsetX - offsetX) / zoom;
+    let y = (e.offsetY - offsetY) / zoom;
     selectedNode = getNodeAt(x, y);
     contextMenuX = x;
     contextMenuY = y;
@@ -50,12 +57,19 @@ canvas.addEventListener('mousedown', function (e) {
         contextMenu.style.display = 'none';
     }
 
-    let x = e.offsetX - offsetX;
-    let y = e.offsetY - offsetY;
+    let x = (e.offsetX - offsetX) / zoom;
+    let y = (e.offsetY - offsetY) / zoom;
     startNode = getNodeAt(x, y);
 
-    if (startNode) {
-        isDragging = true;
+    if (startNode && isOverEdgeHandle(startNode, x, y)) {
+        isCreatingEdge = true;
+        draggingNode = startNode;
+        mouseX = x;
+        mouseY = y;
+        dragStartX = x;
+        dragStartY = y;
+    } else if (startNode) {
+        isDraggingNode = true;
         draggingNode = startNode;
         mouseX = x;
         mouseY = y;
@@ -69,11 +83,16 @@ canvas.addEventListener('mousedown', function (e) {
 });
 
 canvas.addEventListener('mousemove', function (e) {
-    let x = e.offsetX - offsetX;
-    let y = e.offsetY - offsetY;
+    let x = (e.offsetX - offsetX) / zoom;
+    let y = (e.offsetY - offsetY) / zoom;
     displayCoordinates(e.offsetX, e.offsetY);
 
-    if (isDragging && draggingNode) {
+    hoveredNode = getNodeAt(x, y);
+    draw();
+
+    if (isCreatingEdge && draggingNode) {
+        drawLine(draggingNode.x, draggingNode.y, x, y);
+    } else if (isDraggingNode && draggingNode) {
         draggingNode.x = x;
         draggingNode.y = y;
         draw();
@@ -87,29 +106,50 @@ canvas.addEventListener('mousemove', function (e) {
 });
 
 canvas.addEventListener('mouseup', function (e) {
-    if (isDragging) {
-        let x = e.offsetX - offsetX;
-        let y = e.offsetY - offsetY;
-        let movedDistance = Math.hypot(dragStartX - x, dragStartY - y);
-        if (movedDistance < clickThreshold) {
-            toggleNodeExpansion(draggingNode);
+    if (isCreatingEdge) {
+        let x = (e.offsetX - offsetX) / zoom;
+        let y = (e.offsetY - offsetY) / zoom;
+        let endNode = getNodeAt(x, y);
+        if (endNode && draggingNode && endNode !== draggingNode) {
+            edges.push({ from: draggingNode.name, to: endNode.name });
+            updateEdgeList();
         }
-        isDragging = false;
+        isCreatingEdge = false;
         draggingNode = null;
         draw();
+    } else if (isDraggingNode) {
+        isDraggingNode = false;
+        draggingNode = null;
     } else if (isPanning) {
         isPanning = false;
     }
 });
 
 canvas.addEventListener('click', function (e) {
-    if (!isDragging) {
-        let x = e.offsetX - offsetX;
-        let y = e.offsetY - offsetY;
+    if (!isDraggingNode && !isCreatingEdge) {
+        let x = (e.offsetX - offsetX) / zoom;
+        let y = (e.offsetY - offsetY) / zoom;
         let node = getNodeAt(x, y);
-        if (node) {
+        if (node && !isOverEdgeHandle(node, x, y)) {
             toggleNodeExpansion(node);
         }
+    }
+});
+
+canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    let mouseX = e.offsetX;
+    let mouseY = e.offsetY;
+    let wheel = e.deltaY < 0 ? 1 : -1;
+    let zoomFactor = 1.1;
+    let newZoom = zoom * (wheel > 0 ? zoomFactor : 1 / zoomFactor);
+    newZoom = Math.min(maxZoom, Math.max(minZoom, newZoom));
+
+    if (newZoom !== zoom) {
+        offsetX -= mouseX / zoom * (newZoom - zoom);
+        offsetY -= mouseY / zoom * (newZoom - zoom);
+        zoom = newZoom;
+        draw();
     }
 });
 
@@ -124,10 +164,15 @@ function getNodeAt(x, y) {
     });
 }
 
+function isOverEdgeHandle(node, x, y) {
+    return Math.hypot(node.x - x, node.y - y) > node.radius && Math.hypot(node.x - x, node.y - y) < node.radius + edgeHandleRadius;
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(offsetX, offsetY);
+    ctx.scale(zoom, zoom);
 
     drawGrid();
 
@@ -138,7 +183,7 @@ function draw() {
             ctx.beginPath();
             ctx.moveTo(fromNode.x, fromNode.y);
             ctx.lineTo(toNode.x, toNode.y);
-            ctx.strokeStyle = '#000'; 
+            ctx.strokeStyle = '#000';
             ctx.stroke();
         }
     });
@@ -169,7 +214,7 @@ function draw() {
                     document.body.removeChild(node.textarea);
                     node.textarea = null;
                     node.isExpanded = false;
-                    resetNodeDimensions(node); 
+                    resetNodeDimensions(node);
                     draw();
                 });
             }
@@ -178,10 +223,17 @@ function draw() {
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
             ctx.fill();
-            ctx.strokeStyle = '#000'; 
+            ctx.strokeStyle = '#000';
             ctx.stroke();
             ctx.fillStyle = '#000';
             ctx.fillText(node.name, node.x - 10, node.y - 15);
+
+            if (node === hoveredNode) {
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius + edgeHandleRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#888';
+                ctx.stroke();
+            }
         }
     });
 
@@ -193,16 +245,19 @@ function drawGrid() {
     ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 0.5;
 
-    for (let x = -offsetX % gridSpacing; x < canvas.width; x += gridSpacing) {
+    let startX = -Math.floor(offsetX / gridSpacing) * gridSpacing;
+    let startY = -Math.floor(offsetY / gridSpacing) * gridSpacing;
+
+    for (let x = startX; x < canvas.width; x += gridSpacing) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
+        ctx.moveTo(x, -canvas.height);
         ctx.lineTo(x, canvas.height);
         ctx.stroke();
     }
 
-    for (let y = -offsetY % gridSpacing; y < canvas.height; y += gridSpacing) {
+    for (let y = startY; y < canvas.height; y += gridSpacing) {
         ctx.beginPath();
-        ctx.moveTo(0, y);
+        ctx.moveTo(-canvas.width, y);
         ctx.lineTo(canvas.width, y);
         ctx.stroke();
     }
@@ -219,6 +274,7 @@ function resetNodeDimensions(node) {
 function drawLine(x1, y1, x2, y2) {
     ctx.save();
     ctx.translate(offsetX, offsetY);
+    ctx.scale(zoom, zoom);
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
@@ -364,7 +420,7 @@ function toggleNodeExpansion(node) {
 
 function animateNodeExpansion(node) {
     let startTime = null;
-    const duration = 300;
+    const duration = 300; 
     const initialRadius = node.isExpanded ? node.radius : 0;
     const targetRadius = node.isExpanded ? 0 : node.originalRadius;
     const initialWidth = node.isExpanded ? 0 : node.expandedWidth;
