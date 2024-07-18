@@ -27,7 +27,7 @@ let minZoom = 0.5;
 let maxZoom = 2;
 
 let hoveredNode = null;
-let edgeHandleRadius = 20;
+let edgeHandleRadius = 10;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.8;
@@ -226,10 +226,12 @@ function draw() {
             ctx.fillStyle = '#000';
             ctx.fillText(node.name, node.x - 10, node.y - 15);
 
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, node.radius + edgeHandleRadius, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#888';
-            ctx.stroke();
+            if (hoveredNode === node) {
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius + edgeHandleRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#888';
+                ctx.stroke();
+            }
         }
     });
 
