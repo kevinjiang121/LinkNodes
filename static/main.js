@@ -18,7 +18,7 @@ let startPanX = 0;
 let startPanY = 0;
 let offsetX = 0;
 let offsetY = 0;
-let clickThreshold = 5; 
+let clickThreshold = 5;
 let dragStartX = 0;
 let dragStartY = 0;
 let gridSpacing = 20;
@@ -27,7 +27,7 @@ let minZoom = 0.5;
 let maxZoom = 2;
 
 let hoveredNode = null;
-let edgeHandleRadius = 5;
+let edgeHandleRadius = 20;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight * 0.8;
@@ -59,7 +59,7 @@ canvas.addEventListener('mousedown', function (e) {
 
     let x = (e.offsetX - offsetX) / zoom;
     let y = (e.offsetY - offsetY) / zoom;
-    startNode = getNodeAt(x, y);
+    startNode = getNodeAtOrNear(x, y);
 
     if (startNode && isOverEdgeHandle(startNode, x, y)) {
         isCreatingEdge = true;
@@ -68,7 +68,7 @@ canvas.addEventListener('mousedown', function (e) {
         mouseY = y;
         dragStartX = x;
         dragStartY = y;
-    } else if (startNode) {
+    } else if (startNode && !isOverEdgeHandle(startNode, x, y)) {
         isDraggingNode = true;
         draggingNode = startNode;
         mouseX = x;
@@ -87,7 +87,7 @@ canvas.addEventListener('mousemove', function (e) {
     let y = (e.offsetY - offsetY) / zoom;
     displayCoordinates(e.offsetX, e.offsetY);
 
-    hoveredNode = getNodeAt(x, y);
+    hoveredNode = getNodeAtOrNear(x, y);
     draw();
 
     if (isCreatingEdge && draggingNode) {
@@ -109,7 +109,7 @@ canvas.addEventListener('mouseup', function (e) {
     if (isCreatingEdge) {
         let x = (e.offsetX - offsetX) / zoom;
         let y = (e.offsetY - offsetY) / zoom;
-        let endNode = getNodeAt(x, y);
+        let endNode = getNodeAtOrNear(x, y);
         if (endNode && draggingNode && endNode !== draggingNode) {
             edges.push({ from: draggingNode.name, to: endNode.name });
             updateEdgeList();
@@ -129,7 +129,7 @@ canvas.addEventListener('click', function (e) {
     if (!isDraggingNode && !isCreatingEdge) {
         let x = (e.offsetX - offsetX) / zoom;
         let y = (e.offsetY - offsetY) / zoom;
-        let node = getNodeAt(x, y);
+        let node = getNodeAtOrNear(x, y);
         if (node && !isOverEdgeHandle(node, x, y)) {
             toggleNodeExpansion(node);
         }
@@ -146,26 +146,23 @@ canvas.addEventListener('wheel', function(e) {
     newZoom = Math.min(maxZoom, Math.max(minZoom, newZoom));
 
     if (newZoom !== zoom) {
-        offsetX -= mouseX / zoom * (newZoom - zoom);
-        offsetY -= mouseY / zoom * (newZoom - zoom);
+        offsetX -= (mouseX - offsetX) * (newZoom / zoom - 1);
+        offsetY -= (mouseY - offsetY) * (newZoom / zoom - 1);
         zoom = newZoom;
         draw();
     }
 });
 
-function getNodeAt(x, y) {
+function getNodeAtOrNear(x, y) {
     return nodes.find(node => {
-        if (node.isExpanded) {
-            return x > node.x - node.width / 2 && x < node.x + node.width / 2 &&
-                   y > node.y - node.height / 2 && y < node.y + node.height / 2;
-        } else {
-            return Math.hypot(node.x - x, node.y - y) < node.radius;
-        }
+        let distance = Math.hypot(node.x - x, node.y - y);
+        return distance < node.radius + edgeHandleRadius;
     });
 }
 
 function isOverEdgeHandle(node, x, y) {
-    return Math.hypot(node.x - x, node.y - y) > node.radius && Math.hypot(node.x - x, node.y - y) < node.radius + edgeHandleRadius;
+    let distance = Math.hypot(node.x - x, node.y - y);
+    return distance > node.radius && distance < node.radius + edgeHandleRadius;
 }
 
 function draw() {
@@ -194,7 +191,7 @@ function draw() {
             ctx.rect(node.x - node.width / 2, node.y - node.height / 2, node.width, node.height);
             ctx.fillStyle = '#fff';
             ctx.fill();
-            ctx.strokeStyle = '#000'; 
+            ctx.strokeStyle = '#000';
             ctx.stroke();
             ctx.fillStyle = '#000';
 
@@ -222,18 +219,17 @@ function draw() {
         } else {
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+            ctx.fillStyle = node.color || '#000';
             ctx.fill();
             ctx.strokeStyle = '#000';
             ctx.stroke();
             ctx.fillStyle = '#000';
             ctx.fillText(node.name, node.x - 10, node.y - 15);
 
-            if (node === hoveredNode) {
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, node.radius + edgeHandleRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = '#888';
-                ctx.stroke();
-            }
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.radius + edgeHandleRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#888';
+            ctx.stroke();
         }
     });
 
@@ -245,19 +241,20 @@ function drawGrid() {
     ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 0.5;
 
-    let startX = -Math.floor(offsetX / gridSpacing) * gridSpacing;
-    let startY = -Math.floor(offsetY / gridSpacing) * gridSpacing;
+    let scaledSpacing = gridSpacing * zoom;
+    let startX = -Math.floor(offsetX / scaledSpacing) * scaledSpacing;
+    let startY = -Math.floor(offsetY / scaledSpacing) * scaledSpacing;
 
-    for (let x = startX; x < canvas.width; x += gridSpacing) {
+    for (let x = startX; x < canvas.width; x += scaledSpacing) {
         ctx.beginPath();
-        ctx.moveTo(x, -canvas.height);
+        ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height);
         ctx.stroke();
     }
 
-    for (let y = startY; y < canvas.height; y += gridSpacing) {
+    for (let y = startY; y < canvas.height; y += scaledSpacing) {
         ctx.beginPath();
-        ctx.moveTo(-canvas.width, y);
+        ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
         ctx.stroke();
     }
@@ -420,7 +417,7 @@ function toggleNodeExpansion(node) {
 
 function animateNodeExpansion(node) {
     let startTime = null;
-    const duration = 300; 
+    const duration = 300;
     const initialRadius = node.isExpanded ? node.radius : 0;
     const targetRadius = node.isExpanded ? 0 : node.originalRadius;
     const initialWidth = node.isExpanded ? 0 : node.expandedWidth;
@@ -450,7 +447,7 @@ function animateNodeExpansion(node) {
             requestAnimationFrame(animate);
         } else {
             if (!node.isExpanded) {
-                resetNodeDimensions(node); 
+                resetNodeDimensions(node);
             }
             draw();
         }
@@ -460,8 +457,8 @@ function animateNodeExpansion(node) {
 }
 
 function displayCoordinates(x, y) {
-    ctx.clearRect(0, canvas.height - 20, canvas.width, 20); 
-    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10); 
+    ctx.clearRect(0, canvas.height - 20, canvas.width, 20);
+    ctx.fillText(`(${x}, ${y})`, 10, canvas.height - 10);
 }
 
 draw();
