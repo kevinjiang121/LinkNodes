@@ -244,20 +244,20 @@ function drawGrid() {
     ctx.lineWidth = 0.5;
 
     let scaledSpacing = gridSpacing * zoom;
-    let startX = -Math.floor(offsetX / scaledSpacing) * scaledSpacing;
-    let startY = -Math.floor(offsetY / scaledSpacing) * scaledSpacing;
+    let startX = -Math.floor((offsetX + canvas.width / zoom) / scaledSpacing) * scaledSpacing;
+    let startY = -Math.floor((offsetY + canvas.height / zoom) / scaledSpacing) * scaledSpacing;
 
-    for (let x = startX; x < canvas.width; x += scaledSpacing) {
+    for (let x = startX; x < (canvas.width / zoom) + Math.abs(offsetX) / zoom; x += scaledSpacing) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.moveTo(x, -Math.abs(offsetY) / zoom);
+        ctx.lineTo(x, (canvas.height / zoom) + Math.abs(offsetY) / zoom);
         ctx.stroke();
     }
 
-    for (let y = startY; y < canvas.height; y += scaledSpacing) {
+    for (let y = startY; y < (canvas.height / zoom) + Math.abs(offsetY) / zoom; y += scaledSpacing) {
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.moveTo(-Math.abs(offsetX) / zoom, y);
+        ctx.lineTo((canvas.width / zoom) + Math.abs(offsetX) / zoom, y);
         ctx.stroke();
     }
 
