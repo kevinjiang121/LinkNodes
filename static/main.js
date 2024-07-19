@@ -43,7 +43,7 @@ canvas.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     let x = (e.offsetX - offsetX) / zoom;
     let y = (e.offsetY - offsetY) / zoom;
-    selectedNode = getNodeAtOrNear(x, y);
+    selectedNode = getNodeAt(x, y);
     contextMenuX = x;
     contextMenuY = y;
     if (selectedNode) {
@@ -58,9 +58,9 @@ canvas.addEventListener('mousedown', function (e) {
 
     let x = (e.offsetX - offsetX) / zoom;
     let y = (e.offsetY - offsetY) / zoom;
-    startNode = getNodeAtOrNear(x, y);
+    startNode = getNodeAt(x, y);
 
-    if (startNode && isOverEdgeHandle(startNode, x, y)) {
+    if (startNode && isOverEdgeHandle(startNode, x, y) && !startNode.isExpanded) {
         isCreatingEdge = true;
         isEdgeCreationActive = true;
         draggingNode = startNode;
@@ -68,7 +68,7 @@ canvas.addEventListener('mousedown', function (e) {
         mouseY = y;
         dragStartX = x;
         dragStartY = y;
-    } else if (startNode && !isOverEdgeHandle(startNode, x, y)) {
+    } else if (startNode && (!isOverEdgeHandle(startNode, x, y) || startNode.isExpanded)) {
         isDraggingNode = true;
         draggingNode = startNode;
         mouseX = x;
@@ -87,7 +87,7 @@ canvas.addEventListener('mousemove', function (e) {
     let y = (e.offsetY - offsetY) / zoom;
     displayCoordinates(e.offsetX, e.offsetY);
 
-    hoveredNode = getNodeAtOrNear(x, y);
+    hoveredNode = getNodeAt(x, y);
     draw();
 
     if (isCreatingEdge && draggingNode) {
@@ -95,6 +95,7 @@ canvas.addEventListener('mousemove', function (e) {
     } else if (isDraggingNode && draggingNode) {
         draggingNode.x = x;
         draggingNode.y = y;
+        updateNodeTextAreaPosition(draggingNode);
         draw();
     } else if (isPanning) {
         offsetX += e.clientX - startPanX;
@@ -110,7 +111,7 @@ canvas.addEventListener('mouseup', function (e) {
     let y = (e.offsetY - offsetY) / zoom;
 
     if (isCreatingEdge) {
-        let endNode = getNodeAtOrNear(x, y);
+        let endNode = getNodeAt(x, y);
         if (endNode && draggingNode && endNode !== draggingNode) {
             edges.push({ from: draggingNode.name, to: endNode.name });
             updateEdgeList();
@@ -131,8 +132,8 @@ canvas.addEventListener('click', function (e) {
     if (!isDraggingNode && !isCreatingEdge && !isEdgeCreationActive) {
         let x = (e.offsetX - offsetX) / zoom;
         let y = (e.offsetY - offsetY) / zoom;
-        let node = getNodeAtOrNear(x, y);
-        if (node && !isOverEdgeHandle(node, x, y)) {
+        let node = getNodeAt(x, y);
+        if (node) {
             toggleNodeExpansion(node);
         }
     }
@@ -155,14 +156,17 @@ canvas.addEventListener('wheel', function(e) {
     }
 });
 
-function getNodeAtOrNear(x, y) {
+function getNodeAt(x, y) {
     return nodes.find(node => {
         let distance = Math.hypot(node.x - x, node.y - y);
-        return distance < node.radius + edgeHandleRadius;
+        return distance < node.radius + edgeHandleRadius || (node.isExpanded && x >= node.x - node.width / 2 && x <= node.x + node.width / 2 && y >= node.y - node.height / 2 && y <= node.y + node.height / 2);
     });
 }
 
 function isOverEdgeHandle(node, x, y) {
+    if (node.isExpanded) {
+        return false;
+    }
     let distance = Math.hypot(node.x - x, node.y - y);
     return distance > node.radius && distance < node.radius + edgeHandleRadius;
 }
@@ -201,8 +205,7 @@ function draw() {
                 node.textarea = document.createElement('textarea');
                 node.textarea.value = node.description;
                 node.textarea.style.position = 'absolute';
-                node.textarea.style.left = `${node.x - node.width / 2 + offsetX + canvas.offsetLeft}px`;
-                node.textarea.style.top = `${node.y - node.height / 2 + offsetY + canvas.offsetTop}px`;
+                updateNodeTextAreaPosition(node);
                 node.textarea.style.width = `${node.width - 20}px`;
                 node.textarea.style.height = `${node.height - 20}px`;
                 node.textarea.style.resize = 'none';
@@ -216,6 +219,8 @@ function draw() {
                     resetNodeDimensions(node);
                     draw();
                 });
+            } else {
+                updateNodeTextAreaPosition(node);
             }
 
         } else {
@@ -238,6 +243,13 @@ function draw() {
     });
 
     ctx.restore();
+}
+
+function updateNodeTextAreaPosition(node) {
+    if (node.textarea) {
+        node.textarea.style.left = `${node.x - node.width / 2 + offsetX + canvas.offsetLeft}px`;
+        node.textarea.style.top = `${node.y - node.height / 2 + offsetY + canvas.offsetTop}px`;
+    }
 }
 
 function drawGrid() {
@@ -278,7 +290,7 @@ function drawLine(x1, y1, x2, y2) {
     ctx.scale(zoom, zoom);
     ctx.beginPath();
     ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.lineTo(x2, x2);
     ctx.stroke();
     ctx.restore();
 }
@@ -439,10 +451,7 @@ function animateNodeExpansion(node) {
         node.height = initialHeight + progress * (targetHeight - initialHeight);
 
         if (node.textarea) {
-            node.textarea.style.left = `${node.x - node.width / 2 + offsetX + canvas.offsetLeft}px`;
-            node.textarea.style.top = `${node.y - node.height / 2 + offsetY + canvas.offsetTop}px`;
-            node.textarea.style.width = `${node.width - 20}px`;
-            node.textarea.style.height = `${node.height - 20}px`;
+            updateNodeTextAreaPosition(node);
         }
 
         draw();
