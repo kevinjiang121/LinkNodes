@@ -12,6 +12,7 @@ let mouseX = 0;
 let mouseY = 0;
 let contextMenuX = 0;
 let contextMenuY = 0;
+let isEdgeCreationActive = false;
 
 let isPanning = false;
 let startPanX = 0;
@@ -42,13 +43,11 @@ canvas.addEventListener('contextmenu', function (e) {
     e.preventDefault();
     let x = (e.offsetX - offsetX) / zoom;
     let y = (e.offsetY - offsetY) / zoom;
-    selectedNode = getNodeAt(x, y);
+    selectedNode = getNodeAtOrNear(x, y);
     contextMenuX = x;
     contextMenuY = y;
     if (selectedNode) {
         showContextMenu(e.clientX, e.clientY);
-    } else {
-        showAddNodeMenu(e.clientX, e.clientY);
     }
 });
 
@@ -63,6 +62,7 @@ canvas.addEventListener('mousedown', function (e) {
 
     if (startNode && isOverEdgeHandle(startNode, x, y)) {
         isCreatingEdge = true;
+        isEdgeCreationActive = true;
         draggingNode = startNode;
         mouseX = x;
         mouseY = y;
@@ -106,15 +106,17 @@ canvas.addEventListener('mousemove', function (e) {
 });
 
 canvas.addEventListener('mouseup', function (e) {
+    let x = (e.offsetX - offsetX) / zoom;
+    let y = (e.offsetY - offsetY) / zoom;
+
     if (isCreatingEdge) {
-        let x = (e.offsetX - offsetX) / zoom;
-        let y = (e.offsetY - offsetY) / zoom;
         let endNode = getNodeAtOrNear(x, y);
         if (endNode && draggingNode && endNode !== draggingNode) {
             edges.push({ from: draggingNode.name, to: endNode.name });
             updateEdgeList();
         }
         isCreatingEdge = false;
+        isEdgeCreationActive = false;
         draggingNode = null;
         draw();
     } else if (isDraggingNode) {
@@ -126,7 +128,7 @@ canvas.addEventListener('mouseup', function (e) {
 });
 
 canvas.addEventListener('click', function (e) {
-    if (!isDraggingNode && !isCreatingEdge) {
+    if (!isDraggingNode && !isCreatingEdge && !isEdgeCreationActive) {
         let x = (e.offsetX - offsetX) / zoom;
         let y = (e.offsetY - offsetY) / zoom;
         let node = getNodeAtOrNear(x, y);
