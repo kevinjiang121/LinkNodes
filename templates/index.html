@@ -1,22 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Graph Creator</title>
+    <title>Link Nodes</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .header h1 {
+            margin: 0 20px; /* Move the title to the right */
+        }
+
+        .header button {
+            margin-right: 20px; /* Move the Sign-Up button to the left */
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .button-container button, .button-container input {
+            margin: 0 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Graph Creator</h1>
+    <div class="header">
+        <h1>Link Nodes</h1>
+        <button onclick="">Sign-Up</button>
+    </div>
     <canvas id="graphCanvas"></canvas>
-    <br>
-    <button onclick="exportGraph()">Export Graph</button>
-    <input type="file" id="importFile" onchange="importGraph()">
-    <button onclick="clearGraph()">Clear Graph</button>
-
-    <h2>Graph Nodes</h2>
-    <ul id="nodeList"></ul>
-
-    <h2>Graph Edges</h2>
-    <ul id="edgeList"></ul>
+    <div class="button-container">
+        <button onclick="exportGraph()">Export Graph</button>
+        <input type="file" id="importFile" onchange="importGraph()">
+        <button onclick="clearGraph()">Clear Graph</button>
+    </div>
 
     <div id="contextMenu" style="display: none; position: absolute; background-color: white; border: 1px solid black; z-index: 1000;">
         <ul>
