@@ -24,6 +24,12 @@
 
     <div id="nodeDetails"></div>
 
+    <div class="add-node-menu" style="display: none;">
+        <input type="text" id="nodeNameInput" class="input-field" placeholder="Node Name">
+        <input type="text" id="nodeDescriptionInput" class="input-field" placeholder="Node Description">
+        <button class="add-button" onclick="addNode()">Add Node</button>
+    </div>
+
     <script src="{{ url_for('static', filename='node.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>

@@ -48,6 +48,8 @@ canvas.addEventListener('contextmenu', function (e) {
     contextMenuY = y;
     if (selectedNode) {
         showContextMenu(e.clientX, e.clientY);
+    } else {
+        showAddNodeMenu(e.clientX, e.clientY);
     }
 });
 
@@ -360,53 +362,36 @@ function showContextMenu(x, y) {
 }
 
 function showAddNodeMenu(x, y) {
-    let existingMenu = document.querySelector('.add-node-menu');
-    if (existingMenu) {
-        document.body.removeChild(existingMenu);
-    }
-
-    let addNodeMenu = document.createElement('div');
-    addNodeMenu.classList.add('add-node-menu');
+    let addNodeMenu = document.querySelector('.add-node-menu');
     addNodeMenu.style.left = `${x}px`;
     addNodeMenu.style.top = `${y}px`;
-
-    let nodeNameInput = document.createElement('input');
-    nodeNameInput.type = 'text';
-    nodeNameInput.placeholder = 'Node Name';
-    nodeNameInput.classList.add('input-field');
-    addNodeMenu.appendChild(nodeNameInput);
-
-    let nodeDescriptionInput = document.createElement('input');
-    nodeDescriptionInput.type = 'text';
-    nodeDescriptionInput.placeholder = 'Node Description';
-    nodeDescriptionInput.classList.add('input-field');
-    addNodeMenu.appendChild(nodeDescriptionInput);
-
-    let addButton = document.createElement('button');
-    addButton.textContent = 'Add Node';
-    addButton.classList.add('add-button');
-    addButton.onclick = function () {
-        let nodeName = nodeNameInput.value;
-        let nodeDescription = nodeDescriptionInput.value;
-        if (nodeName && nodeDescription) {
-            nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
-            draw();
-            updateNodeList();
-            document.body.removeChild(addNodeMenu);
-        } else {
-            alert('Please enter both name and description.');
-        }
-    };
-    addNodeMenu.appendChild(addButton);
-
-    document.body.appendChild(addNodeMenu);
+    addNodeMenu.style.display = 'flex';
+    addNodeMenu.style.flexDirection = 'column';
 
     document.addEventListener('click', function removeMenu(event) {
         if (!addNodeMenu.contains(event.target)) {
-            document.body.removeChild(addNodeMenu);
+            addNodeMenu.style.display = 'none';
             document.removeEventListener('click', removeMenu);
         }
-    });
+    }, { once: true });
+}
+
+function addNode() {
+    let nodeNameInput = document.getElementById('nodeNameInput');
+    let nodeDescriptionInput = document.getElementById('nodeDescriptionInput');
+    let nodeName = nodeNameInput.value;
+    let nodeDescription = nodeDescriptionInput.value;
+
+    if (nodeName && nodeDescription) {
+        nodes.push(new Node(nodeName, nodeDescription, contextMenuX, contextMenuY));
+        nodeNameInput.value = '';
+        nodeDescriptionInput.value = '';
+        draw();
+        updateNodeList();
+        document.querySelector('.add-node-menu').style.display = 'none';
+    } else {
+        alert('Please enter both name and description.');
+    }
 }
 
 function removeNode() {
