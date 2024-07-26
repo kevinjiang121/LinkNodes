@@ -36,7 +36,7 @@ class Graph {
 
         this.drawGrid();
         this.edges.forEach(edge => edge.draw(this.ctx, this.nodes));
-        this.nodes.forEach(node => node.draw(this.ctx, false, 1 / this.zoom));
+        this.nodes.forEach(node => node.draw(this.ctx, false, this.zoom));
 
         this.ctx.restore();
     }
@@ -46,7 +46,7 @@ class Graph {
         this.ctx.strokeStyle = '#ddd';
         this.ctx.lineWidth = 0.5;
 
-        const scaledSpacing = this.gridSpacing / this.zoom;
+        const scaledSpacing = this.gridSpacing * this.zoom;
         const startX = -Math.floor((this.offsetX + this.ctx.canvas.width / this.zoom) / scaledSpacing) * scaledSpacing;
         const startY = -Math.floor((this.offsetY + this.ctx.canvas.height / this.zoom) / scaledSpacing) * scaledSpacing;
 

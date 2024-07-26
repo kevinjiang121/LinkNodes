@@ -88,7 +88,7 @@ class CanvasController {
             this.drawLine(this.draggingNode.x, this.draggingNode.y, x, y);
         } else {
             const hoveredNode = this.graph.nodes.find(node => this.isNodeUnderCursor(node, x, y));
-            this.graph.nodes.forEach(node => node.draw(this.ctx, false, this.graph.zoom));
+            this.graph.draw(); // Redraw entire graph to clear previous hover effects
             if (hoveredNode) {
                 hoveredNode.draw(this.ctx, true, this.graph.zoom);
             }
@@ -108,6 +108,7 @@ class CanvasController {
             }
             this.isCreatingEdge = false;
             this.draggingNode = null;
+            this.graph.draw(); // Ensure to clear any temporary lines drawn
         }
     }
 
