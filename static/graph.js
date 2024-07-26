@@ -29,8 +29,10 @@ class Graph {
 
     draw() {
         const canvas = this.ctx.canvas;
-        this.ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to identity
+        this.ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
         this.ctx.translate(this.offsetX, this.offsetY);
         this.ctx.scale(this.zoom, this.zoom);
 
@@ -42,13 +44,13 @@ class Graph {
     }
 
     drawGrid() {
+        const scaledSpacing = this.gridSpacing / this.zoom;
+        const startX = -Math.floor((this.offsetX + this.ctx.canvas.width / this.zoom) / scaledSpacing) * scaledSpacing;
+        const startY = -Math.floor((this.offsetY + this.ctx.canvas.height / this.zoom) / scaledSpacing) * scaledSpacing;
+
         this.ctx.save();
         this.ctx.strokeStyle = '#ddd';
         this.ctx.lineWidth = 0.5;
-
-        const scaledSpacing = this.gridSpacing * this.zoom;
-        const startX = -Math.floor((this.offsetX + this.ctx.canvas.width / this.zoom) / scaledSpacing) * scaledSpacing;
-        const startY = -Math.floor((this.offsetY + this.ctx.canvas.height / this.zoom) / scaledSpacing) * scaledSpacing;
 
         for (let x = startX; x < (this.ctx.canvas.width / this.zoom) + Math.abs(this.offsetX) / this.zoom; x += scaledSpacing) {
             this.ctx.beginPath();
@@ -65,5 +67,14 @@ class Graph {
         }
 
         this.ctx.restore();
+    }
+
+    updateNodePositions(deltaX, deltaY) {
+        const adjustedDeltaX = deltaX / this.zoom;
+        const adjustedDeltaY = deltaY / this.zoom;
+        this.nodes.forEach(node => {
+            node.x += adjustedDeltaX;
+            node.y += adjustedDeltaY;
+        });
     }
 }

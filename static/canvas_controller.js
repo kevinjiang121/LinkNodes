@@ -74,9 +74,14 @@ class CanvasController {
         const x = (e.offsetX - this.graph.offsetX) / this.graph.zoom;
         const y = (e.offsetY - this.graph.offsetY) / this.graph.zoom;
 
+        this.displayCoordinates(x, y);
+
         if (this.isPanning) {
-            this.graph.offsetX += e.clientX - this.startPanX;
-            this.graph.offsetY += e.clientY - this.startPanY;
+            const deltaX = e.clientX - this.startPanX;
+            const deltaY = e.clientY - this.startPanY;
+            this.graph.offsetX += deltaX;
+            this.graph.offsetY += deltaY;
+            this.graph.updateNodePositions(deltaX / this.graph.zoom, deltaY / this.graph.zoom);
             this.startPanX = e.clientX;
             this.startPanY = e.clientY;
             this.graph.draw();
@@ -164,5 +169,21 @@ class CanvasController {
                 document.removeEventListener('click', removeMenu);
             }
         }, { once: true });
+    }
+
+    displayCoordinates(x, y) {
+        const coordinates = document.getElementById('coordinates');
+        if (!coordinates) {
+            const coordinatesDiv = document.createElement('div');
+            coordinatesDiv.id = 'coordinates';
+            coordinatesDiv.style.position = 'absolute';
+            coordinatesDiv.style.left = '10px';
+            coordinatesDiv.style.bottom = '10px';
+            coordinatesDiv.style.backgroundColor = 'white';
+            coordinatesDiv.style.border = '1px solid black';
+            coordinatesDiv.style.padding = '5px';
+            document.body.appendChild(coordinatesDiv);
+        }
+        document.getElementById('coordinates').innerText = `(${x.toFixed(2)}, ${y.toFixed(2)})`;
     }
 }
