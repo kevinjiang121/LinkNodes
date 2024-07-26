@@ -7,7 +7,7 @@
 <body>
     <div class="header">
         <h1>Link Nodes</h1>
-        <button onclick="">Sign-Up</button>
+        <button onclick="signUp()">Sign-Up</button>
     </div>
     <canvas id="graphCanvas"></canvas>
     <div class="button-container">
@@ -30,7 +30,10 @@
         <button class="add-button" onclick="addNode()">Add Node</button>
     </div>
 
-    <script src="{{ url_for('static', filename='node.js') }}"></script>
+    <script src="{{ url_for('static', filename='graph_node.js') }}"></script>
+    <script src="{{ url_for('static', filename='graph_edge.js') }}"></script>
+    <script src="{{ url_for('static', filename='graph.js') }}"></script>
+    <script src="{{ url_for('static', filename='canvas_controller.js') }}"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
