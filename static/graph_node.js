@@ -4,12 +4,8 @@ class GraphNode {
         this.description = description;
         this.x = x;
         this.y = y;
-        this.isExpanded = false;
-        this.originalRadius = 10;
-        this.expandedWidth = 200;
-        this.expandedHeight = 100;
-        this.radius = this.originalRadius;
-        this.edgeHandleRadius = 10;
+        this.radius = 10; // Default radius
+        this.edgeHandleRadius = 10; // Radius for edge handle detection
     }
 
     draw(ctx, hovered, zoom) {
@@ -35,13 +31,25 @@ class GraphNode {
         ctx.restore();
     }
 
-    isOverEdgeHandle(x, y, zoom) {
-        const distance = Math.hypot(this.x - x, this.y - y) / zoom;
-        return distance > this.radius && distance < this.radius + this.edgeHandleRadius;
-    }
-
     setPosition(x, y) {
         this.x = x;
         this.y = y;
+    }
+
+    isOverEdgeHandle(x, y, zoom) {
+        const distance = Math.hypot(this.x - x, this.y - y);
+        const adjustedRadius = this.radius * zoom;
+        const adjustedEdgeHandleRadius = this.edgeHandleRadius * zoom;
+        return distance > adjustedRadius && distance < adjustedRadius + adjustedEdgeHandleRadius;
+    }
+
+    isUnderCursor(x, y, zoom) {
+        const distance = Math.hypot(this.x - x, this.y - y);
+        const adjustedRadius = this.radius * zoom;
+        return distance < adjustedRadius;
+    }
+
+    doubleEdgeHandleRadius() {
+        this.edgeHandleRadius *= 2;
     }
 }

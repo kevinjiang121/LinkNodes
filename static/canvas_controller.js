@@ -64,9 +64,15 @@ class CanvasController {
             this.isDraggingNode = true;
             this.draggingNode = this.startNode;
         } else {
-            this.isPanning = true;
-            this.startPanX = e.clientX;
-            this.startPanY = e.clientY;
+            const hoveredNode = this.graph.nodes.find(node => node.isOverEdgeHandle(x, y, this.graph.zoom));
+            if (hoveredNode) {
+                this.isCreatingEdge = true;
+                this.draggingNode = hoveredNode;
+            } else {
+                this.isPanning = true;
+                this.startPanX = e.clientX;
+                this.startPanY = e.clientY;
+            }
         }
     }
 
@@ -76,6 +82,7 @@ class CanvasController {
 
         this.displayCoordinates(x, y);
 
+        let cursorStyle = 'default';
         if (this.isPanning) {
             const deltaX = e.clientX - this.startPanX;
             const deltaY = e.clientY - this.startPanY;
@@ -91,13 +98,22 @@ class CanvasController {
         } else if (this.isCreatingEdge && this.draggingNode) {
             this.graph.draw();
             this.drawLine(this.draggingNode.x, this.draggingNode.y, x, y);
+            cursorStyle = 'crosshair';
         } else {
             const hoveredNode = this.graph.nodes.find(node => this.isNodeUnderCursor(node, x, y));
             this.graph.draw(); // Redraw entire graph to clear previous hover effects
             if (hoveredNode) {
                 hoveredNode.draw(this.ctx, true, this.graph.zoom);
+                cursorStyle = 'pointer';
+            } else {
+                const hoveredEdgeHandle = this.graph.nodes.find(node => node.isOverEdgeHandle(x, y, this.graph.zoom));
+                if (hoveredEdgeHandle) {
+                    cursorStyle = 'pointer';
+                }
             }
         }
+
+        this.canvas.style.cursor = cursorStyle;
     }
 
     handleMouseUp(e) {
@@ -107,13 +123,15 @@ class CanvasController {
             this.isDraggingNode = false;
             this.draggingNode = null;
         } else if (this.isCreatingEdge) {
-            const endNode = this.graph.nodes.find(node => this.isNodeUnderCursor(node, (e.offsetX - this.graph.offsetX) / this.graph.zoom, (e.offsetY - this.graph.offsetY) / this.graph.zoom));
+            const x = (e.offsetX - this.graph.offsetX) / this.graph.zoom;
+            const y = (e.offsetY - this.graph.offsetY) / this.graph.zoom;
+            const endNode = this.graph.nodes.find(node => this.isNodeUnderCursor(node, x, y));
             if (endNode && this.draggingNode && endNode !== this.draggingNode) {
                 this.graph.addEdge(this.draggingNode.name, endNode.name);
             }
             this.isCreatingEdge = false;
             this.draggingNode = null;
-            this.graph.draw(); // Ensure to clear any temporary lines drawn
+            this.graph.draw(); 
         }
     }
 
@@ -134,8 +152,7 @@ class CanvasController {
     }
 
     isNodeUnderCursor(node, x, y) {
-        const distance = Math.hypot(node.x - x, node.y - y) / this.graph.zoom;
-        return distance < node.radius;
+        return node.isUnderCursor(x, y, this.graph.zoom);
     }
 
     drawLine(x1, y1, x2, y2) {
